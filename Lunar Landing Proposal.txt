@@ -1,0 +1,37 @@
+1. Project Title : Artificial Intelligent Lunar Landing Fuel Control System
+
+2. Situation/Problem/Opportunity: 
+
+   On June 2, 2019, NASA celebrated the 50th anniversary of the historic 
+   Apollo 11 Moon mission and looked to the future of exploration on the 
+   Moon and Mars.
+
+   50 years ago, On 20 July 1969, astronauts Armstrong and Aldrin experienced 
+   some of the scariest moments of first manned moon landing. The Apollo 11 
+   lunar module was on its historic descent to the moon’s crater-pocked 
+   surface when a fuel light blinked on. Still 100ft (30 metres) above the 
+   ground, it was not what the astronauts needed. The Eagle’s tank was nearly 
+   dry. Armstrong taken control of the lunar module at the late stage and 
+   was carefully steering the craft down. They almost ran out of fuel.
+
+3. Purpose Statement (Goals):
+   The overarching goals of this project are to develope an optimized fuel 
+   control software algorithm using Artificial Intelligent to make lunar 
+   module save as much of fuel when landing on Moon in the near future.
+
+4. Objectives/Deliverables (if known):
+   Develope a Machine Learning algorithm to opertimize fuel control system of
+   lunar moduel.
+
+5. Methods/Approach:
+
+   1. Research different kinds of Artificial Intelligent Approaches.
+   2. Develop AI algrithm using Java programming language
+   3. Use Open source Deep Learning 4 Java library
+   4. Use Spark Big data plateform to do data computation
+
+
+
+  
+   
+
