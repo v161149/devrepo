@@ -1,0 +1,178 @@
+import { useEffect, useState } from 'react';
+import './App.css';
+
+type ImageResult = {
+  success: boolean;
+  image?: string | null;
+  message?: string;
+};
+
+// Reusable hook to poll an image endpoint every `intervalMs` milliseconds
+function usePolledImage(urls: string[], streamEndpoint?: string | undefined, intervalMs = 2000) {
+  const [image, setImage] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('Connecting...');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    let es: EventSource | null = null;
+
+    const startSSE = () => {
+      if (!streamEndpoint) return false;
+      try {
+        es = new EventSource(streamEndpoint);
+
+        // When connection opens, mark as connected (even if no image has arrived yet).
+        es.onopen = () => {
+          if (!mounted) return;
+          setStatus('Connected to BMD graph server agent');
+          setError(null);
+        };
+
+        es.onmessage = (ev) => {
+          try {
+            const data = JSON.parse(ev.data) as ImageResult;
+            if (data && data.success && data.image) {
+              if (!mounted) return;
+              setImage(data.image);
+              setStatus('Connected to BMD graph server agent');
+              setError(null);
+            } else if (data && !data.success && mounted) {
+              // Server replied but no image available yet
+              setStatus('Server reachable, no image available');
+            }
+          } catch (e) {
+            // ignore parse errors
+          }
+        };
+
+  es.onerror = () => {
+          if (!mounted) return;
+          // If EventSource fails, show a helpful message and close the connection.
+          setStatus('Failed to connect to BMD graph server agent');
+          if (es) {
+            es.close();
+            es = null;
+          }
+        };
+        return true;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    // Try SSE first
+    const sseStarted = startSSE();
+
+    const fetchOnce = async () => {
+      let sawServerReachable = false;
+      let lastError: any = null;
+
+      for (const url of urls) {
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) {
+            // Server responded but with non-OK status
+            lastError = `HTTP ${resp.status} from ${url}`;
+            continue;
+          }
+          sawServerReachable = true;
+          const data = (await resp.json()) as ImageResult;
+          if (data && data.success && data.image) {
+            if (!mounted) return;
+            setImage(data.image);
+            setStatus('Connected to BMD graph server agent');
+            setError(null);
+            return;
+          } else if (mounted) {
+            // Server is reachable but reports no image yet
+            setStatus('Server reachable, no image available');
+            setError(null);
+            return;
+          }
+        } catch (e) {
+          lastError = e;
+          continue;
+        }
+      }
+
+      if (!mounted) return;
+      if (sawServerReachable) {
+        // We already handled the reachable-without-image case above, but keep this as a fallback
+        setStatus('Server reachable, no image available');
+        setError(null);
+      } else {
+        setStatus('Failed to connect to BMD graph server agent');
+        setError(typeof lastError === 'string' ? lastError : lastError?.message ?? 'Network error');
+      }
+    };
+
+    // initial fetch
+    if (!sseStarted) {
+      fetchOnce();
+    }
+
+    const iv = setInterval(() => {
+      if (!es) fetchOnce();
+    }, intervalMs);
+
+    return () => {
+      mounted = false;
+      if (es) {
+        es.close();
+        es = null;
+      }
+      clearInterval(iv);
+    };
+  }, [JSON.stringify(urls), streamEndpoint, intervalMs]);
+
+  return { image, status, error } as const;
+}
+
+function ImagePanel({ title, urls, stream }: { title: string; urls: string[]; stream?: string }) {
+  const { image, status, error } = usePolledImage(urls, stream, 2000);
+
+  return (
+    <div className="image-panel">
+      <h2>{title}</h2>
+      <div className="panel-status">
+        <span className={`status ${status.includes('Connected') ? 'connected' : 'disconnected'}`}>
+          ● {status}
+        </span>
+      </div>
+      {image ? (
+        <div className="image-wrapper">
+          <img src={image} alt={`${title} content`} className="dynamic-image" />
+        </div>
+      ) : (
+        <div className="placeholder small">
+          <p>Waiting for the latest BMD graph to be loaded...</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  // We'll try specific endpoints for each image, with a fallback to `/api/image`.
+  // Assumption: Backend may expose `/api/image1` and `/api/image2`. If not, both will fall back to `/api/image`.
+  const image1Urls = ['http://localhost:5000/api/image1', 'http://localhost:5000/api/image'];
+  const image2Urls = ['http://localhost:5000/api/image2', 'http://localhost:5000/api/image'];
+  const image1Stream = 'http://localhost:5000/stream/image1';
+  const image2Stream = 'http://localhost:5000/stream/image2';
+
+  return (
+    <div className="App">
+      <header className="App-header">
+        <h1>Real-Time BMD Health Report</h1>
+      </header>
+
+      <main className="App-content two-row">
+        <ImagePanel title="Real-Time Missed BMD Graph" urls={image1Urls} stream={image1Stream} />
+        <ImagePanel title="Real-Time Total BMD Graph" urls={image2Urls} stream={image2Stream} />
+      </main>
+    </div>
+  );
+}
+
+export default App;
