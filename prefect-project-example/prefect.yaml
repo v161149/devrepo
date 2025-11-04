@@ -1,0 +1,185 @@
+# prefect.yaml
+# Main configuration file for Prefect deployments
+# Version: 1.0 for Prefect 3.4.24
+
+name: my-multi-flow-project
+
+# Define how workers retrieve the flow code (local storage)
+# UPDATE THIS PATH to match where you extracted this project
+pull:
+  - prefect.deployments.steps.set_working_directory:
+      directory: "."  # Current directory - or use absolute path like "C:/Users/YourName/prefect-flows"
+
+# Define multiple deployments with different schedules
+deployments:
+  # ========================================
+  # Deployment 1: Daily ETL Job
+  # ========================================
+  - name: daily-etl-job
+    entrypoint: flows/etl_flow.py:etl_flow
+    work_pool:
+      name: default-process-pool
+      work_queue_name: production
+      job_variables:
+        type: process
+    schedule:
+      cron: "0 2 * * *"  # Daily at 2 AM
+      timezone: "America/New_York"
+    parameters:
+      api_url: "https://api.example.com/data"
+      output_path: "C:/data/daily_output.csv"
+    description: "Daily ETL pipeline that extracts, transforms, and loads data"
+    tags: ["etl", "production", "daily"]
+
+  # ========================================
+  # Deployment 2: Hourly Data Sync
+  # ========================================
+  - name: hourly-data-sync
+    entrypoint: flows/sync_flow.py:sync_flow
+    work_pool:
+      name: default-process-pool
+      work_queue_name: production
+      job_variables:
+        type: process
+    schedule:
+      interval: 3600  # Every hour (in seconds)
+      anchor_date: "2024-01-01T00:00:00"
+      timezone: "UTC"
+    parameters:
+      source: "database_a"
+      destination: "database_b"
+    description: "Sync data between databases every hour"
+    tags: ["sync", "production", "hourly"]
+
+  # ========================================
+  # Deployment 3: Weekly Report
+  # ========================================
+  - name: weekly-report
+    entrypoint: flows/report_flow.py:generate_report
+    work_pool:
+      name: default-process-pool
+      work_queue_name: reports
+      job_variables:
+        type: process
+    schedule:
+      cron: "0 9 * * MON"  # Every Monday at 9 AM
+      timezone: "America/Chicago"
+    parameters:
+      report_type: "weekly_summary"
+      recipients: ["manager@company.com", "team@company.com"]
+    description: "Generate and send weekly report every Monday morning"
+    tags: ["reports", "weekly", "email"]
+
+  # ========================================
+  # Deployment 4: Business Hours Monitoring
+  # ========================================
+  - name: business-hours-monitor
+    entrypoint: flows/monitor_flow.py:monitoring_flow
+    work_pool:
+      name: default-process-pool
+      work_queue_name: monitoring
+      job_variables:
+        type: process
+    schedule:
+      cron: "0 9,12,15,18 * * MON-FRI"  # 9 AM, 12 PM, 3 PM, 6 PM on weekdays
+      timezone: "America/Los_Angeles"
+    parameters:
+      check_type: "system_health"
+      alert_threshold: 90
+    description: "Monitor system health during business hours (4 times per day on weekdays)"
+    tags: ["monitoring", "alerts", "business-hours"]
+
+  # ========================================
+  # Deployment 5: Monthly Cleanup
+  # ========================================
+  - name: monthly-cleanup
+    entrypoint: flows/cleanup_flow.py:cleanup_flow
+    work_pool:
+      name: default-process-pool
+      work_queue_name: maintenance
+      job_variables:
+        type: process
+    schedule:
+      cron: "0 3 1 * *"  # First day of every month at 3 AM
+      timezone: "UTC"
+    parameters:
+      retention_days: 90
+      target_directory: "C:/temp/old_files"
+      dry_run: false
+    description: "Monthly cleanup of old files (runs on 1st of each month)"
+    tags: ["maintenance", "cleanup", "monthly"]
+
+  # ========================================
+  # Deployment 6: Manual Data Import
+  # ========================================
+  - name: manual-data-import
+    entrypoint: flows/import_flow.py:import_data
+    work_pool:
+      name: default-process-pool
+      work_queue_name: adhoc
+      job_variables:
+        type: process
+    schedule: null  # No automatic schedule - manual runs only
+    parameters:
+      import_source: "manual"
+      validate: true
+    description: "Manual data import - run on demand only (no automatic schedule)"
+    tags: ["import", "manual", "adhoc"]
+
+  # ========================================
+  # Deployment 7: Frequent System Check
+  # ========================================
+  - name: frequent-check
+    entrypoint: flows/quick_check.py:quick_check_flow
+    work_pool:
+      name: default-process-pool
+      work_queue_name: production
+      job_variables:
+        type: process
+    schedule:
+      interval: 1800  # Every 30 minutes (in seconds)
+      anchor_date: "2024-01-01T09:00:00"
+      timezone: "America/New_York"
+    parameters:
+      check_interval: "30min"
+      timeout: 60
+    description: "Quick system check every 30 minutes"
+    tags: ["monitoring", "frequent", "health-check"]
+
+  # ========================================
+  # Deployment 8: Complex RRule Schedule
+  # ========================================
+  - name: complex-schedule-flow
+    entrypoint: flows/complex_flow.py:complex_flow
+    work_pool:
+      name: default-process-pool
+      work_queue_name: production
+      job_variables:
+        type: process
+    schedule:
+      # Runs at 10 AM, 2 PM, and 4 PM on weekdays only
+      rrule: "FREQ=DAILY;BYHOUR=10,14,16;BYMINUTE=0;BYDAY=MO,TU,WE,TH,FR"
+      timezone: "America/New_York"
+    parameters:
+      mode: "production"
+      max_retries: 3
+    description: "Complex schedule: runs at 10 AM, 2 PM, and 4 PM on weekdays"
+    tags: ["production", "complex-schedule", "weekdays"]
+
+# ========================================
+# NOTES:
+# ========================================
+# 1. Update the "directory" path in the pull section to match your actual project location
+# 2. All schedules use timezone-aware times
+# 3. Work pool "default-process-pool" must be created before deploying
+# 4. Different work queues help organize and prioritize flows
+# 5. Parameters can be overridden when manually triggering flows
+# 6. Tags help filter and organize deployments in the UI
+#
+# Common Commands:
+# - Deploy all: prefect deploy --all
+# - Deploy one: prefect deploy --name daily-etl-job
+# - List deployments: prefect deployment ls
+# - Run manually: prefect deployment run "flow-name/deployment-name"
+# - Pause schedule: prefect deployment pause deployment-name
+# - Resume schedule: prefect deployment resume deployment-name

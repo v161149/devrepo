@@ -1,0 +1,34 @@
+# Prefect and core dependencies
+prefect==3.4.24
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# HTTP requests
+requests>=2.31.0
+
+# Additional useful libraries
+python-dateutil>=2.8.0
+pytz>=2023.3
+
+# Optional: Uncomment if you need these integrations
+# prefect-aws>=0.4.0           # For S3 storage
+# prefect-gcp>=0.5.0           # For GCS storage
+# prefect-azure>=0.3.0         # For Azure storage
+# prefect-github>=0.2.0        # For GitHub storage
+# prefect-docker>=0.4.0        # For Docker deployments
+# prefect-kubernetes>=0.3.0    # For Kubernetes deployments
+# prefect-email>=0.3.0         # For email notifications
+# prefect-slack>=0.2.0         # For Slack notifications
+
+# Database drivers (uncomment if needed)
+# psycopg2-binary>=2.9.0       # PostgreSQL
+# pymongo>=4.5.0               # MongoDB
+# sqlalchemy>=2.0.0            # SQL databases
+# pymysql>=1.1.0               # MySQL
+
+# Development tools (optional)
+# pytest>=7.4.0                # For testing
+# black>=23.0.0                # Code formatting
+# flake8>=6.1.0                # Linting
