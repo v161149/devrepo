@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intraday Job Configuration - Sequential Workflow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            padding: 24px;
+            color: #2c3e50;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px 32px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 32px;
+        }
+
+        .workflow-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 32px;
+            position: relative;
+        }
+
+        .workflow-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: #e9ecef;
+            z-index: 0;
+        }
+
+        .workflow-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .workflow-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e9ecef;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 8px;
+            transition: all 0.3s;
+        }
+
+        .workflow-step.active .workflow-circle {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+        }
+
+        .workflow-step.completed .workflow-circle {
+            background: #28a745;
+            color: white;
+        }
+
+        .workflow-step.disabled .workflow-circle {
+            background: #f8f9fa;
+            color: #ced4da;
+        }
+
+        .workflow-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6c757d;
+            text-align: center;
+        }
+
+        .workflow-step.active .workflow-label {
+            color: #667eea;
+        }
+
+        .workflow-step.completed .workflow-label {
+            color: #28a745;
+        }
+
+        .job-info {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 16px 20px;
+            margin-bottom: 32px;
+            border-radius: 4px;
+        }
+
+        .job-info-row {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+        }
+
+        .job-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .job-info-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 13px;
+        }
+
+        .job-info-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .section {
+            margin-bottom: 32px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .section.disabled {
+            opacity: 0.6;
+            pointer-events: none;
+            background: #f8f9fa;
+        }
+
+        .section-header {
+            background: #f8f9fa;
+            padding: 16px 24px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section.active .section-header {
+            background: #f0f4ff;
+            border-bottom-color: #667eea;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-icon {
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+
+        .section-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-active {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .badge-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .section-body {
+            padding: 24px;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .config-label {
+            font-weight: 600;
+            color: #495057;
+            padding-top: 8px;
+        }
+
+        .day-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .day-chip {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+            background: white;
+            user-select: none;
+        }
+
+        .day-chip:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .day-chip.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .values-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .value-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            transition: all 0.2s;
+        }
+
+        .value-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .value-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .value-main {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+
+        .value-sub {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .value-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 16px;
+        }
+
+        .icon-btn:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+        }
+
+        .icon-btn.delete:hover {
+            background: #fff5f5;
+            border-color: #e53e3e;
+            color: #e53e3e;
+        }
+
+        .add-form {
+            background: white;
+            border: 2px dashed #e9ecef;
+            border-radius: 6px;
+            padding: 20px;
+            margin-top: 16px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-input {
+            padding: 10px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .time-picker {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            padding: 4px 12px;
+            transition: all 0.2s;
+        }
+
+        .time-picker:focus-within {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .time-unit {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .time-arrow {
+            width: 24px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            color: #667eea;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 3px;
+            transition: all 0.15s;
+        }
+
+        .time-arrow:hover {
+            background: #f0f4ff;
+            transform: scale(1.1);
+        }
+
+        .time-arrow:active {
+            transform: scale(0.95);
+            background: #e0e8ff;
+        }
+
+        .time-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            width: 42px;
+            text-align: center;
+            padding: 8px 4px;
+            border-radius: 4px;
+            background: #f8f9fa;
+            font-family: 'Courier New', monospace;
+        }
+
+        .time-separator {
+            font-size: 20px;
+            font-weight: 600;
+            color: #667eea;
+            padding: 0 4px;
+        }
+
+        .time-label {
+            font-size: 10px;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .number-input {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .number-input:focus-within {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .number-btn {
+            width: 36px;
+            height: 42px;
+            border: none;
+            background: #f8f9fa;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .number-btn:hover {
+            background: #e9ecef;
+        }
+
+        .number-btn:active {
+            background: #dee2e6;
+            transform: scale(0.95);
+        }
+
+        .number-display {
+            padding: 0 16px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #6c757d;
+            border: 1px solid #ced4da;
+        }
+
+        .btn-secondary:hover {
+            background: #f8f9fa;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .helper-text {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 4px;
+            font-style: italic;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .toast.show {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .schedule-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: #e3f2fd;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #1565c0;
+            margin-right: 4px;
+            margin-bottom: 4px;
+        }
+
+        .day-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .day-badge {
+            padding: 2px 8px;
+            background: #667eea;
+            color: white;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .generated-schedules {
+            margin-top: 24px;
+            background: #f8f9fa;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .generated-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .generated-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .generated-count {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .selection-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .selection-btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid #ced4da;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .selection-btn:hover {
+            background: #f8f9fa;
+            border-color: #667eea;
+        }
+
+        .schedules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+
+        .schedule-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .schedule-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+        }
+
+        .schedule-card.selected {
+            background: #f0f4ff;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .schedule-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .schedule-number {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 13px;
+        }
+
+        .schedule-checkbox {
+            width: 20px;
+            height: 20px;
+        }
+
+        .schedule-time {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+
+        .schedule-duration {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .info-banner {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: start;
+            gap: 12px;
+        }
+
+        .info-icon {
+            color: #2196f3;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .info-text {
+            font-size: 13px;
+            color: #1565c0;
+            line-height: 1.5;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 20px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .filter-section {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .filter-input {
+            padding: 6px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 32px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .action-left {
+            color: #6c757d;
+            font-size: 13px;
+        }
+
+        .action-right {
+            display: flex;
+            gap: 12px;
+        }
+
+        .sla-config-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .sla-config-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .multiplier-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .multiplier-option {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            font-weight: 500;
+            background: white;
+        }
+
+        .multiplier-option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .multiplier-option.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .calculated-info {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: #495057;
+        }
+
+        .brd-config-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .offset-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .offset-option {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+            font-weight: 500;
+            background: white;
+        }
+
+        .offset-option:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .offset-option.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Intraday Job Configuration - Sequential Workflow</h1>
+            <p>Step-by-step configuration: Job Schedules → SLA per Schedule → BRD per SLA</p>
+        </div>
+
+        <div class="content">
+            <!-- Workflow Progress -->
+            <div class="workflow-steps">
+                <div class="workflow-step active" id="step1">
+                    <div class="workflow-circle">1</div>
+                    <div class="workflow-label">Job Run Schedule</div>
+                </div>
+                <div class="workflow-step disabled" id="step2">
+                    <div class="workflow-circle">2</div>
+                    <div class="workflow-label">SLA Configuration</div>
+                </div>
+                <div class="workflow-step disabled" id="step3">
+                    <div class="workflow-circle">3</div>
+                    <div class="workflow-label">BRD Configuration</div>
+                </div>
+            </div>
+
+            <!-- Job Information -->
+            <div class="job-info">
+                <div class="job-info-row">
+                    <div class="job-info-item">
+                        <span class="job-info-label">Frequency:</span>
+                        <span class="job-info-value">Intraday</span>
+                    </div>
+                    <div class="job-info-item">
+                        <span class="job-info-label">Time Zone:</span>
+                        <span class="job-info-value">Eastern Time Zone</span>
+                    </div>
+                    <div class="job-info-item">
+                        <span class="job-info-label">Calendar Type:</span>
+                        <span class="job-info-value">USA Bank Calendar</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 1: Job Run Schedule Configuration -->
+            <div class="section active" id="section1">
+                <div class="section-header">
+                    <div class="section-title">
+                        <div class="section-icon">⚙️</div>
+                        Step 1: Job Run Schedule Configuration
+                    </div>
+                    <span class="section-badge badge-active">Active</span>
+                </div>
+                <div class="section-body">
+                    <div class="info-banner">
+                        <span class="info-icon">💡</span>
+                        <div class="info-text">
+                            <strong>Step 1:</strong> Configure your job schedules first. Use the scroll arrows to set times and generate all scheduled run times. Select which runs to save.
+                        </div>
+                    </div>
+
+                    <div id="jobRunForm" class="add-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Schedule Name</label>
+                                <input type="text" class="form-input" id="scheduleName" placeholder="e.g., Daily Backup Job">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <div class="form-label">Run Days:</div>
+                            <div class="day-selector" id="jobRunDays">
+                                <div class="day-chip" data-day="Sunday">Sunday</div>
+                                <div class="day-chip" data-day="Monday">Monday</div>
+                                <div class="day-chip" data-day="Tuesday">Tuesday</div>
+                                <div class="day-chip" data-day="Wednesday">Wednesday</div>
+                                <div class="day-chip" data-day="Thursday">Thursday</div>
+                                <div class="day-chip" data-day="Friday">Friday</div>
+                                <div class="day-chip" data-day="Saturday">Saturday</div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Window Start Time</label>
+                                <div class="time-picker">
+                                    <div class="time-unit">
+                                        <div class="time-arrow" onclick="adjustTime('startTime', 'hours', 1)">▲</div>
+                                        <div class="time-value" id="startTimeHours">00</div>
+                                        <div class="time-arrow" onclick="adjustTime('startTime', 'hours', -1)">▼</div>
+                                        <div class="time-label">HH</div>
+                                    </div>
+                                    <span class="time-separator">:</span>
+                                    <div class="time-unit">
+                                        <div class="time-arrow" onclick="adjustTime('startTime', 'minutes', 1)">▲</div>
+                                        <div class="time-value" id="startTimeMinutes">00</div>
+                                        <div class="time-arrow" onclick="adjustTime('startTime', 'minutes', -1)">▼</div>
+                                        <div class="time-label">MM</div>
+                                    </div>
+                                    <span class="time-separator">:</span>
+                                    <div class="time-unit">
+                                        <div class="time-arrow" onclick="adjustTime('startTime', 'seconds', 1)">▲</div>
+                                        <div class="time-value" id="startTimeSeconds">00</div>
+                                        <div class="time-arrow" onclick="adjustTime('startTime', 'seconds', -1)">▼</div>
+                                        <div class="time-label">SS</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Window End Time</label>
+                                <div class="time-picker">
+                                    <div class="time-unit">
+                                        <div class="time-arrow" onclick="adjustTime('endTime', 'hours', 1)">▲</div>
+                                        <div class="time-value" id="endTimeHours">23</div>
+                                        <div class="time-arrow" onclick="adjustTime('endTime', 'hours', -1)">▼</div>
+                                        <div class="time-label">HH</div>
+                                    </div>
+                                    <span class="time-separator">:</span>
+                                    <div class="time-unit">
+                                        <div class="time-arrow" onclick="adjustTime('endTime', 'minutes', 1)">▲</div>
+                                        <div class="time-value" id="endTimeMinutes">30</div>
+                                        <div class="time-arrow" onclick="adjustTime('endTime', 'minutes', -1)">▼</div>
+                                        <div class="time-label">MM</div>
+                                    </div>
+                                    <span class="time-separator">:</span>
+                                    <div class="time-unit">
+                                        <div class="time-arrow" onclick="adjustTime('endTime', 'seconds', 1)">▲</div>
+                                        <div class="time-value" id="endTimeSeconds">00</div>
+                                        <div class="time-arrow" onclick="adjustTime('endTime', 'seconds', -1)">▼</div>
+                                        <div class="time-label">SS</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Interval Between Jobs (Minutes)</label>
+                                <div class="number-input">
+                                    <button class="number-btn" onclick="adjustNumber('interval', -1)">−</button>
+                                    <div class="number-display" id="intervalValue">30</div>
+                                    <button class="number-btn" onclick="adjustNumber('interval', 1)">+</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Job Duration (Minutes)</label>
+                                <div class="number-input">
+                                    <button class="number-btn" onclick="adjustNumber('jobDuration', -1)">−</button>
+                                    <div class="number-display" id="jobDurationValue">5</div>
+                                    <button class="number-btn" onclick="adjustNumber('jobDuration', 1)">+</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="runOnHolidays">
+                                    Run on Holidays
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-primary" onclick="generateSchedules()">🔄 Generate All Schedules</button>
+                        </div>
+                    </div>
+
+                    <!-- Generated Schedules Display -->
+                    <div id="generatedSchedulesContainer" style="display: none;">
+                        <div class="generated-schedules">
+                            <div class="generated-header">
+                                <div class="generated-title">
+                                    <span>📅 Generated Schedules</span>
+                                    <span id="generatedCount" class="generated-count">0 runs</span>
+                                </div>
+                                <div class="selection-actions">
+                                    <button class="selection-btn" onclick="selectAll()">✓ Select All</button>
+                                    <button class="selection-btn" onclick="deselectAll()">✗ Deselect All</button>
+                                    <button class="selection-btn" onclick="selectByTime('morning')">🌅 Morning (6-12)</button>
+                                    <button class="selection-btn" onclick="selectByTime('afternoon')">☀️ Afternoon (12-18)</button>
+                                    <button class="selection-btn" onclick="selectByTime('evening')">🌙 Evening (18-24)</button>
+                                </div>
+                            </div>
+
+                            <div class="stats-row">
+                                <div class="stat-item">
+                                    <span class="stat-label">Total Generated</span>
+                                    <span class="stat-value" id="totalGenerated">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Selected</span>
+                                    <span class="stat-value" id="totalSelected">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Interval</span>
+                                    <span class="stat-value" id="intervalDisplay">0 min</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Duration Each</span>
+                                    <span class="stat-value" id="durationDisplay">0 min</span>
+                                </div>
+                            </div>
+
+                            <div class="filter-section">
+                                <span class="filter-label">🔍 Quick Filter:</span>
+                                <input type="text" class="filter-input" id="timeFilter" placeholder="Filter by time" oninput="filterSchedules()">
+                                <button class="selection-btn" onclick="selectEveryNth(2)">Every 2nd</button>
+                                <button class="selection-btn" onclick="selectEveryNth(3)">Every 3rd</button>
+                                <button class="selection-btn" onclick="selectEveryNth(4)">Every 4th</button>
+                            </div>
+
+                            <div id="schedulesGrid" class="schedules-grid"></div>
+
+                            <div class="form-actions" style="margin-top: 16px;">
+                                <button class="btn btn-secondary" onclick="cancelGeneration()">Cancel</button>
+                                <button class="btn btn-primary" onclick="saveSelectedSchedules()">💾 Save Selected (<span id="saveCount">0</span>)</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Saved Schedules List -->
+                    <div id="savedSchedulesList" class="values-list" style="margin-top: 24px;"></div>
+
+                    <div class="form-actions" style="margin-top: 24px;" id="proceedToSLABtn" style="display: none;">
+                        <button class="btn btn-success" onclick="proceedToSLA()">✓ Proceed to SLA Configuration →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: SLA Configuration -->
+            <div class="section disabled" id="section2">
+                <div class="section-header">
+                    <div class="section-title">
+                        <div class="section-icon">⏱️</div>
+                        Step 2: SLA Configuration (Per Job Schedule)
+                    </div>
+                    <span class="section-badge badge-pending">Pending</span>
+                </div>
+                <div class="section-body">
+                    <div class="info-banner">
+                        <span class="info-icon">💡</span>
+                        <div class="info-text">
+                            <strong>Step 2:</strong> Configure SLA for each job schedule. Select a multiplier (1.5x-2x) of job duration or enter a custom value. The system will calculate SLA due times automatically.
+                        </div>
+                    </div>
+
+                    <div id="slaConfigList"></div>
+
+                    <div class="form-actions" style="margin-top: 24px;" id="proceedToBRDBtn" style="display: none;">
+                        <button class="btn btn-secondary" onclick="backToStep1()">← Back to Job Schedules</button>
+                        <button class="btn btn-success" onclick="proceedToBRD()">✓ Proceed to BRD Configuration →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3: BRD Configuration -->
+            <div class="section disabled" id="section3">
+                <div class="section-header">
+                    <div class="section-title">
+                        <div class="section-icon">📊</div>
+                        Step 3: Business Reporting Day Configuration (Per SLA)
+                    </div>
+                    <span class="section-badge badge-pending">Pending</span>
+                </div>
+                <div class="section-body">
+                    <div class="info-banner">
+                        <span class="info-icon">💡</span>
+                        <div class="info-text">
+                            <strong>Step 3:</strong> Configure Business Reporting Day for each SLA. Select an offset (30-60 minutes) after expected job completion. The system will calculate BRD times automatically.
+                        </div>
+                    </div>
+
+                    <div id="brdConfigList"></div>
+
+                    <div class="form-actions" style="margin-top: 24px;">
+                        <button class="btn btn-secondary" onclick="backToStep2()">← Back to SLA Configuration</button>
+                        <button class="btn btn-success" onclick="completeConfiguration()">✓ Complete Configuration</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <div class="action-left">Last saved: Never</div>
+            <div class="action-right">
+                <button class="btn btn-secondary" onclick="resetAll()">Reset All</button>
+                <button class="btn btn-primary" onclick="saveConfiguration()">💾 Save All Configurations</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toastMessage">Configuration saved successfully!</span>
+    </div>
+
+    <script>
+        let generatedSchedulesData = [];
+        let savedJobSchedules = [];
+        let slaConfigurations = [];
+        let brdConfigurations = [];
+        let currentStep = 1;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupDayChips();
+        });
+
+        function setupDayChips() {
+            document.querySelectorAll('.day-chip').forEach(chip => {
+                chip.addEventListener('click', function() {
+                    this.classList.toggle('selected');
+                });
+            });
+        }
+
+        function adjustTime(timeId, unit, delta) {
+            const elementId = timeId + unit.charAt(0).toUpperCase() + unit.slice(1);
+            const element = document.getElementById(elementId);
+            let value = parseInt(element.textContent);
+            
+            if (unit === 'hours') {
+                value = (value + delta + 24) % 24;
+            } else if (unit === 'minutes' || unit === 'seconds') {
+                value = (value + delta + 60) % 60;
+            }
+            
+            element.textContent = String(value).padStart(2, '0');
+        }
+
+        function adjustNumber(inputId, delta) {
+            const element = document.getElementById(inputId + 'Value');
+            let value = parseInt(element.textContent);
+            value = Math.max(1, value + delta);
+            element.textContent = value;
+        }
+
+        function getTimeValue(timeId) {
+            const hours = document.getElementById(timeId + 'Hours').textContent;
+            const minutes = document.getElementById(timeId + 'Minutes').textContent;
+            const seconds = document.getElementById(timeId + 'Seconds').textContent;
+            return `${hours}:${minutes}:${seconds}`;
+        }
+
+        function getSelectedDays(containerId) {
+            const container = document.getElementById(containerId);
+            const selected = [];
+            container.querySelectorAll('.day-chip.selected').forEach(chip => {
+                selected.push(chip.dataset.day);
+            });
+            return selected;
+        }
+
+        function parseTime(timeStr) {
+            const parts = timeStr.split(':');
+            return {
+                hours: parseInt(parts[0]),
+                minutes: parseInt(parts[1]),
+                seconds: parseInt(parts[2] || 0)
+            };
+        }
+
+        function formatTime(hours, minutes, seconds) {
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function addMinutes(timeStr, mins) {
+            const time = parseTime(timeStr);
+            let totalMinutes = time.hours * 60 + time.minutes + mins;
+            const hours = Math.floor(totalMinutes / 60) % 24;
+            const minutes = totalMinutes % 60;
+            return formatTime(hours, minutes, time.seconds);
+        }
+
+        function generateSchedules() {
+            const scheduleName = document.getElementById('scheduleName').value || 'Intraday Job';
+            const days = getSelectedDays('jobRunDays');
+            const startTime = getTimeValue('startTime');
+            const endTime = getTimeValue('endTime');
+            const interval = parseInt(document.getElementById('intervalValue').textContent);
+            const duration = parseInt(document.getElementById('jobDurationValue').textContent);
+
+            if (days.length === 0) {
+                showToast('Please select at least one day', 'error');
+                return;
+            }
+
+            generatedSchedulesData = [];
+            let currentTime = startTime;
+            let runNumber = 1;
+
+            const startParsed = parseTime(startTime);
+            const endParsed = parseTime(endTime);
+            const startMinutes = startParsed.hours * 60 + startParsed.minutes;
+            const endMinutes = endParsed.hours * 60 + endParsed.minutes;
+
+            while (true) {
+                const currentParsed = parseTime(currentTime);
+                const currentMinutes = currentParsed.hours * 60 + currentParsed.minutes;
+
+                if (currentMinutes > endMinutes) break;
+
+                const endJobTime = addMinutes(currentTime, duration);
+
+                generatedSchedulesData.push({
+                    runNumber: runNumber,
+                    startTime: currentTime,
+                    endTime: endJobTime,
+                    duration: duration,
+                    selected: false
+                });
+
+                currentTime = addMinutes(currentTime, interval);
+                runNumber++;
+
+                if (runNumber > 1000) break;
+            }
+
+            displayGeneratedSchedules(scheduleName, days, interval, duration);
+            document.getElementById('generatedSchedulesContainer').style.display = 'block';
+            showToast(`Generated ${generatedSchedulesData.length} schedule runs!`);
+        }
+
+        function displayGeneratedSchedules(name, days, interval, duration) {
+            const grid = document.getElementById('schedulesGrid');
+            grid.innerHTML = '';
+
+            generatedSchedulesData.forEach((schedule, index) => {
+                const card = document.createElement('div');
+                card.className = 'schedule-card';
+                card.dataset.index = index;
+                card.onclick = function() {
+                    this.classList.toggle('selected');
+                    generatedSchedulesData[index].selected = !generatedSchedulesData[index].selected;
+                    updateSelectionCount();
+                };
+
+                card.innerHTML = `
+                    <div class="schedule-card-header">
+                        <span class="schedule-number">Run #${schedule.runNumber}</span>
+                        <input type="checkbox" class="schedule-checkbox" ${schedule.selected ? 'checked' : ''} onclick="event.stopPropagation();">
+                    </div>
+                    <div class="schedule-time">${schedule.startTime}</div>
+                    <div class="schedule-duration">Duration: ${schedule.duration} min | Ends: ${schedule.endTime}</div>
+                `;
+
+                grid.appendChild(card);
+            });
+
+            document.getElementById('totalGenerated').textContent = generatedSchedulesData.length;
+            document.getElementById('generatedCount').textContent = `${generatedSchedulesData.length} runs`;
+            document.getElementById('intervalDisplay').textContent = `${interval} min`;
+            document.getElementById('durationDisplay').textContent = `${duration} min`;
+            updateSelectionCount();
+        }
+
+        function updateSelectionCount() {
+            const selectedCount = generatedSchedulesData.filter(s => s.selected).length;
+            document.getElementById('totalSelected').textContent = selectedCount;
+            document.getElementById('saveCount').textContent = selectedCount;
+
+            document.querySelectorAll('.schedule-card').forEach((card, index) => {
+                const checkbox = card.querySelector('.schedule-checkbox');
+                checkbox.checked = generatedSchedulesData[index].selected;
+            });
+        }
+
+        function selectAll() {
+            generatedSchedulesData.forEach(schedule => schedule.selected = true);
+            document.querySelectorAll('.schedule-card').forEach(card => card.classList.add('selected'));
+            updateSelectionCount();
+        }
+
+        function deselectAll() {
+            generatedSchedulesData.forEach(schedule => schedule.selected = false);
+            document.querySelectorAll('.schedule-card').forEach(card => card.classList.remove('selected'));
+            updateSelectionCount();
+        }
+
+        function selectByTime(period) {
+            deselectAll();
+            
+            generatedSchedulesData.forEach((schedule, index) => {
+                const hour = parseTime(schedule.startTime).hours;
+                let shouldSelect = false;
+
+                if (period === 'morning' && hour >= 6 && hour < 12) shouldSelect = true;
+                if (period === 'afternoon' && hour >= 12 && hour < 18) shouldSelect = true;
+                if (period === 'evening' && hour >= 18 && hour < 24) shouldSelect = true;
+
+                if (shouldSelect) {
+                    schedule.selected = true;
+                    document.querySelector(`.schedule-card[data-index="${index}"]`).classList.add('selected');
+                }
+            });
+
+            updateSelectionCount();
+        }
+
+        function selectEveryNth(n) {
+            deselectAll();
+            
+            generatedSchedulesData.forEach((schedule, index) => {
+                if ((index + 1) % n === 0) {
+                    schedule.selected = true;
+                    document.querySelector(`.schedule-card[data-index="${index}"]`).classList.add('selected');
+                }
+            });
+
+            updateSelectionCount();
+        }
+
+        function filterSchedules() {
+            const filterValue = document.getElementById('timeFilter').value.toLowerCase();
+            
+            document.querySelectorAll('.schedule-card').forEach(card => {
+                const timeText = card.querySelector('.schedule-time').textContent.toLowerCase();
+                if (timeText.includes(filterValue)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function cancelGeneration() {
+            document.getElementById('generatedSchedulesContainer').style.display = 'none';
+            generatedSchedulesData = [];
+        }
+
+        function saveSelectedSchedules() {
+            const selectedSchedules = generatedSchedulesData.filter(s => s.selected);
+            
+            if (selectedSchedules.length === 0) {
+                showToast('Please select at least one schedule to save', 'error');
+                return;
+            }
+
+            const scheduleName = document.getElementById('scheduleName').value || 'Intraday Job';
+            const days = getSelectedDays('jobRunDays');
+            const interval = document.getElementById('intervalValue').textContent;
+            const duration = parseInt(document.getElementById('jobDurationValue').textContent);
+            const runOnHolidays = document.getElementById('runOnHolidays').checked;
+
+            const dayAbbr = {
+                'Sunday': 'Sun', 'Monday': 'Mon', 'Tuesday': 'Tue',
+                'Wednesday': 'Wed', 'Thursday': 'Thu', 'Friday': 'Fri', 'Saturday': 'Sat'
+            };
+
+            // Save to job schedules array
+            const jobScheduleId = 'job_' + Date.now();
+            savedJobSchedules.push({
+                id: jobScheduleId,
+                name: scheduleName,
+                days: days,
+                schedules: selectedSchedules,
+                interval: interval,
+                duration: duration,
+                runOnHolidays: runOnHolidays
+            });
+
+            // Display saved schedule
+            const savedList = document.getElementById('savedSchedulesList');
+            const card = document.createElement('div');
+            card.className = 'value-card';
+            card.dataset.scheduleId = jobScheduleId;
+
+            const dayBadges = days.map(day => `<span class="day-badge">${dayAbbr[day]}</span>`).join('');
+            const scheduleList = selectedSchedules.map(s => s.startTime).slice(0, 10).join(', ');
+
+            card.innerHTML = `
+                <div class="value-card-header">
+                    <div>
+                        <div class="value-main">${scheduleName}</div>
+                        <div class="value-sub">
+                            <span class="schedule-badge">⏱️ ${selectedSchedules.length} runs</span>
+                            <span class="schedule-badge">🔄 Every ${interval} min</span>
+                            <span class="schedule-badge">⏳ ${duration} min duration</span>
+                            ${runOnHolidays ? '<span class="schedule-badge">🎉 Includes Holidays</span>' : ''}
+                        </div>
+                        <div class="day-list">${dayBadges}</div>
+                        <div class="value-sub" style="margin-top: 8px; font-size: 11px;">
+                            <strong>Times:</strong> ${scheduleList}${selectedSchedules.length > 10 ? '...' : ''}
+                        </div>
+                    </div>
+                    <div class="value-actions">
+                        <button class="icon-btn delete" onclick="deleteJobSchedule('${jobScheduleId}')">🗑️</button>
+                    </div>
+                </div>
+            `;
+
+            savedList.appendChild(card);
+
+            document.getElementById('generatedSchedulesContainer').style.display = 'none';
+            generatedSchedulesData = [];
+
+            // Show proceed button
+            document.getElementById('proceedToSLABtn').style.display = 'flex';
+
+            showToast(`Saved ${selectedSchedules.length} schedules successfully!`);
+        }
+
+        function deleteJobSchedule(scheduleId) {
+            if (confirm('Deleting this job schedule will also remove its associated SLA and BRD configurations. Continue?')) {
+                // Remove from array
+                savedJobSchedules = savedJobSchedules.filter(s => s.id !== scheduleId);
+                
+                // Remove from DOM
+                const card = document.querySelector(`[data-schedule-id="${scheduleId}"]`);
+                if (card) card.remove();
+
+                // Remove associated SLAs and BRDs
+                slaConfigurations = slaConfigurations.filter(s => s.jobScheduleId !== scheduleId);
+                brdConfigurations = brdConfigurations.filter(b => {
+                    const sla = slaConfigurations.find(s => s.id === b.slaId);
+                    return sla && sla.jobScheduleId !== scheduleId;
+                });
+
+                // Hide proceed button if no schedules
+                if (savedJobSchedules.length === 0) {
+                    document.getElementById('proceedToSLABtn').style.display = 'none';
+                }
+
+                showToast('Job schedule deleted');
+            }
+        }
+
+        function proceedToSLA() {
+            if (savedJobSchedules.length === 0) {
+                showToast('Please save at least one job schedule first', 'error');
+                return;
+            }
+
+            // Update workflow
+            currentStep = 2;
+            updateWorkflowSteps();
+
+            // Disable section 1, enable section 2
+            document.getElementById('section1').classList.remove('active');
+            document.getElementById('section1').classList.add('disabled');
+            document.getElementById('section2').classList.remove('disabled');
+            document.getElementById('section2').classList.add('active');
+
+            // Generate SLA configuration forms
+            generateSLAForms();
+
+            // Scroll to section 2
+            document.getElementById('section2').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function generateSLAForms() {
+            const container = document.getElementById('slaConfigList');
+            container.innerHTML = '';
+
+            savedJobSchedules.forEach(jobSchedule => {
+                const slaCard = document.createElement('div');
+                slaCard.className = 'sla-config-card';
+                slaCard.dataset.jobScheduleId = jobSchedule.id;
+
+                const existingSLA = slaConfigurations.find(s => s.jobScheduleId === jobSchedule.id);
+                const selectedMultiplier = existingSLA ? existingSLA.multiplier : 1.5;
+                const customValue = existingSLA ? existingSLA.customMinutes : '';
+
+                slaCard.innerHTML = `
+                    <div class="sla-config-header">
+                        <div>
+                            <div class="value-main">${jobSchedule.name}</div>
+                            <div class="value-sub">${jobSchedule.schedules.length} runs | ${jobSchedule.duration} min duration each</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label">SLA Duration Multiplier (1.5x - 2x of job duration)</label>
+                        <div class="multiplier-selector">
+                            <div class="multiplier-option ${selectedMultiplier === 1.5 ? 'selected' : ''}" onclick="selectMultiplier('${jobSchedule.id}', 1.5)">
+                                1.5x (${Math.round(jobSchedule.duration * 1.5)} min)
+                            </div>
+                            <div class="multiplier-option ${selectedMultiplier === 1.75 ? 'selected' : ''}" onclick="selectMultiplier('${jobSchedule.id}', 1.75)">
+                                1.75x (${Math.round(jobSchedule.duration * 1.75)} min)
+                            </div>
+                            <div class="multiplier-option ${selectedMultiplier === 2 ? 'selected' : ''}" onclick="selectMultiplier('${jobSchedule.id}', 2)">
+                                2x (${jobSchedule.duration * 2} min)
+                            </div>
+                            <div class="multiplier-option ${selectedMultiplier === 'custom' ? 'selected' : ''}" onclick="selectMultiplier('${jobSchedule.id}', 'custom')">
+                                Custom
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="customSLA_${jobSchedule.id}" style="display: ${selectedMultiplier === 'custom' ? 'block' : 'none'}; margin-bottom: 12px;">
+                        <label class="form-label">Custom SLA Duration (Minutes)</label>
+                        <input type="number" class="form-input" value="${customValue}" min="1" 
+                               onchange="updateCustomSLA('${jobSchedule.id}', this.value)">
+                    </div>
+
+                    <div class="calculated-info" id="slaInfo_${jobSchedule.id}">
+                        <strong>Calculated SLA Due Times:</strong><br>
+                        ${generateSLAPreview(jobSchedule, selectedMultiplier, customValue)}
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 12px;">
+                        <button class="btn btn-primary" onclick="saveSLAForSchedule('${jobSchedule.id}')">
+                            ✓ Confirm SLA for ${jobSchedule.name}
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(slaCard);
+            });
+
+            // Check if all SLAs are configured
+            checkAllSLAsConfigured();
+        }
+
+        function selectMultiplier(jobScheduleId, multiplier) {
+            const card = document.querySelector(`[data-job-schedule-id="${jobScheduleId}"]`);
+            const options = card.querySelectorAll('.multiplier-option');
+            options.forEach(opt => opt.classList.remove('selected'));
+            
+            if (multiplier === 'custom') {
+                options[3].classList.add('selected');
+                document.getElementById(`customSLA_${jobScheduleId}`).style.display = 'block';
+            } else {
+                const index = multiplier === 1.5 ? 0 : multiplier === 1.75 ? 1 : 2;
+                options[index].classList.add('selected');
+                document.getElementById(`customSLA_${jobScheduleId}`).style.display = 'none';
+                
+                const jobSchedule = savedJobSchedules.find(s => s.id === jobScheduleId);
+                updateSLAPreview(jobScheduleId, multiplier, null);
+            }
+        }
+
+        function updateCustomSLA(jobScheduleId, customMinutes) {
+            updateSLAPreview(jobScheduleId, 'custom', customMinutes);
+        }
+
+        function updateSLAPreview(jobScheduleId, multiplier, customMinutes) {
+            const jobSchedule = savedJobSchedules.find(s => s.id === jobScheduleId);
+            const preview = generateSLAPreview(jobSchedule, multiplier, customMinutes);
+            document.getElementById(`slaInfo_${jobScheduleId}`).innerHTML = `
+                <strong>Calculated SLA Due Times:</strong><br>${preview}
+            `;
+        }
+
+        function generateSLAPreview(jobSchedule, multiplier, customMinutes) {
+            let slaMinutes;
+            if (multiplier === 'custom' && customMinutes) {
+                slaMinutes = parseInt(customMinutes);
+            } else if (multiplier !== 'custom') {
+                slaMinutes = Math.round(jobSchedule.duration * multiplier);
+            } else {
+                return 'Please enter custom SLA duration';
+            }
+
+            const samples = jobSchedule.schedules.slice(0, 3);
+            const previews = samples.map(schedule => {
+                const slaTime = addMinutes(schedule.startTime, slaMinutes);
+                return `• Job starts ${schedule.startTime} → SLA due by ${slaTime}`;
+            }).join('<br>');
+
+            return previews + (jobSchedule.schedules.length > 3 ? '<br>... and more' : '');
+        }
+
+        function saveSLAForSchedule(jobScheduleId) {
+            const card = document.querySelector(`[data-job-schedule-id="${jobScheduleId}"]`);
+            const selectedOption = card.querySelector('.multiplier-option.selected');
+            
+            if (!selectedOption) {
+                showToast('Please select an SLA multiplier', 'error');
+                return;
+            }
+
+            const jobSchedule = savedJobSchedules.find(s => s.id === jobScheduleId);
+            let multiplier, customMinutes, slaMinutes;
+
+            if (selectedOption.textContent.includes('Custom')) {
+                multiplier = 'custom';
+                const customInput = document.querySelector(`#customSLA_${jobScheduleId} input`);
+                customMinutes = parseInt(customInput.value);
+                
+                if (!customMinutes || customMinutes < 1) {
+                    showToast('Please enter a valid custom SLA duration', 'error');
+                    return;
+                }
+                slaMinutes = customMinutes;
+            } else {
+                if (selectedOption.textContent.includes('1.5x')) {
+                    multiplier = 1.5;
+                } else if (selectedOption.textContent.includes('1.75x')) {
+                    multiplier = 1.75;
+                } else {
+                    multiplier = 2;
+                }
+                slaMinutes = Math.round(jobSchedule.duration * multiplier);
+            }
+
+            // Remove existing SLA for this job schedule
+            slaConfigurations = slaConfigurations.filter(s => s.jobScheduleId !== jobScheduleId);
+
+            // Add new SLA
+            const slaId = 'sla_' + Date.now();
+            slaConfigurations.push({
+                id: slaId,
+                jobScheduleId: jobScheduleId,
+                multiplier: multiplier,
+                customMinutes: customMinutes,
+                slaMinutes: slaMinutes,
+                jobSchedule: jobSchedule
+            });
+
+            // Update UI to show confirmation
+            const confirmBtn = card.querySelector('.btn-primary');
+            confirmBtn.textContent = '✓ SLA Confirmed';
+            confirmBtn.style.background = '#28a745';
+            confirmBtn.disabled = true;
+
+            showToast(`SLA configured for ${jobSchedule.name}`);
+            
+            checkAllSLAsConfigured();
+        }
+
+        function checkAllSLAsConfigured() {
+            const allConfigured = savedJobSchedules.every(job => 
+                slaConfigurations.some(sla => sla.jobScheduleId === job.id)
+            );
+
+            if (allConfigured && savedJobSchedules.length > 0) {
+                document.getElementById('proceedToBRDBtn').style.display = 'flex';
+            }
+        }
+
+        function proceedToBRD() {
+            if (slaConfigurations.length !== savedJobSchedules.length) {
+                showToast('Please configure SLA for all job schedules', 'error');
+                return;
+            }
+
+            // Update workflow
+            currentStep = 3;
+            updateWorkflowSteps();
+
+            // Disable section 2, enable section 3
+            document.getElementById('section2').classList.remove('active');
+            document.getElementById('section2').classList.add('disabled');
+            document.getElementById('section3').classList.remove('disabled');
+            document.getElementById('section3').classList.add('active');
+
+            // Generate BRD configuration forms
+            generateBRDForms();
+
+            // Scroll to section 3
+            document.getElementById('section3').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function generateBRDForms() {
+            const container = document.getElementById('brdConfigList');
+            container.innerHTML = '';
+
+            slaConfigurations.forEach(sla => {
+                const brdCard = document.createElement('div');
+                brdCard.className = 'brd-config-card';
+                brdCard.dataset.slaId = sla.id;
+
+                const existingBRD = brdConfigurations.find(b => b.slaId === sla.id);
+                const selectedOffset = existingBRD ? existingBRD.offset : 30;
+                const customValue = existingBRD ? existingBRD.customMinutes : '';
+
+                brdCard.innerHTML = `
+                    <div class="sla-config-header">
+                        <div>
+                            <div class="value-main">${sla.jobSchedule.name} - BRD Configuration</div>
+                            <div class="value-sub">Job Duration: ${sla.jobSchedule.duration} min | SLA: ${sla.slaMinutes} min</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label class="form-label">BRD Offset (30-60 minutes after job completion)</label>
+                        <div class="offset-selector">
+                            <div class="offset-option ${selectedOffset === 30 ? 'selected' : ''}" onclick="selectOffset('${sla.id}', 30)">
+                                +30 min
+                            </div>
+                            <div class="offset-option ${selectedOffset === 45 ? 'selected' : ''}" onclick="selectOffset('${sla.id}', 45)">
+                                +45 min
+                            </div>
+                            <div class="offset-option ${selectedOffset === 60 ? 'selected' : ''}" onclick="selectOffset('${sla.id}', 60)">
+                                +60 min
+                            </div>
+                            <div class="offset-option ${selectedOffset === 'custom' ? 'selected' : ''}" onclick="selectOffset('${sla.id}', 'custom')">
+                                Custom
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="customBRD_${sla.id}" style="display: ${selectedOffset === 'custom' ? 'block' : 'none'}; margin-bottom: 12px;">
+                        <label class="form-label">Custom BRD Offset (Minutes)</label>
+                        <input type="number" class="form-input" value="${customValue}" min="1" 
+                               onchange="updateCustomBRD('${sla.id}', this.value)">
+                    </div>
+
+                    <div class="calculated-info" id="brdInfo_${sla.id}">
+                        <strong>Calculated BRD Times:</strong><br>
+                        ${generateBRDPreview(sla, selectedOffset, customValue)}
+                    </div>
+
+                    <div class="form-actions" style="margin-top: 12px;">
+                        <button class="btn btn-primary" onclick="saveBRDForSLA('${sla.id}')">
+                            ✓ Confirm BRD for ${sla.jobSchedule.name}
+                        </button>
+                    </div>
+                `;
+
+                container.appendChild(brdCard);
+            });
+        }
+
+        function selectOffset(slaId, offset) {
+            const card = document.querySelector(`[data-sla-id="${slaId}"]`);
+            const options = card.querySelectorAll('.offset-option');
+            options.forEach(opt => opt.classList.remove('selected'));
+            
+            if (offset === 'custom') {
+                options[3].classList.add('selected');
+                document.getElementById(`customBRD_${slaId}`).style.display = 'block';
+            } else {
+                const index = offset === 30 ? 0 : offset === 45 ? 1 : 2;
+                options[index].classList.add('selected');
+                document.getElementById(`customBRD_${slaId}`).style.display = 'none';
+                
+                updateBRDPreview(slaId, offset, null);
+            }
+        }
+
+        function updateCustomBRD(slaId, customMinutes) {
+            updateBRDPreview(slaId, 'custom', customMinutes);
+        }
+
+        function updateBRDPreview(slaId, offset, customMinutes) {
+            const sla = slaConfigurations.find(s => s.id === slaId);
+            const preview = generateBRDPreview(sla, offset, customMinutes);
+            document.getElementById(`brdInfo_${slaId}`).innerHTML = `
+                <strong>Calculated BRD Times:</strong><br>${preview}
+            `;
+        }
+
+        function generateBRDPreview(sla, offset, customMinutes) {
+            let offsetMinutes;
+            if (offset === 'custom' && customMinutes) {
+                offsetMinutes = parseInt(customMinutes);
+            } else if (offset !== 'custom') {
+                offsetMinutes = offset;
+            } else {
+                return 'Please enter custom BRD offset';
+            }
+
+            const samples = sla.jobSchedule.schedules.slice(0, 3);
+            const previews = samples.map(schedule => {
+                const jobEnd = addMinutes(schedule.startTime, sla.jobSchedule.duration);
+                const brdTime = addMinutes(jobEnd, offsetMinutes);
+                return `• Job ends ${jobEnd} → BRD at ${brdTime}`;
+            }).join('<br>');
+
+            return previews + (sla.jobSchedule.schedules.length > 3 ? '<br>... and more' : '');
+        }
+
+        function saveBRDForSLA(slaId) {
+            const card = document.querySelector(`[data-sla-id="${slaId}"]`);
+            const selectedOption = card.querySelector('.offset-option.selected');
+            
+            if (!selectedOption) {
+                showToast('Please select a BRD offset', 'error');
+                return;
+            }
+
+            const sla = slaConfigurations.find(s => s.id === slaId);
+            let offset, customMinutes, offsetMinutes;
+
+            if (selectedOption.textContent.includes('Custom')) {
+                offset = 'custom';
+                const customInput = document.querySelector(`#customBRD_${slaId} input`);
+                customMinutes = parseInt(customInput.value);
+                
+                if (!customMinutes || customMinutes < 1) {
+                    showToast('Please enter a valid custom BRD offset', 'error');
+                    return;
+                }
+                offsetMinutes = customMinutes;
+            } else {
+                offsetMinutes = parseInt(selectedOption.textContent.match(/\d+/)[0]);
+                offset = offsetMinutes;
+            }
+
+            // Remove existing BRD for this SLA
+            brdConfigurations = brdConfigurations.filter(b => b.slaId !== slaId);
+
+            // Add new BRD
+            const brdId = 'brd_' + Date.now();
+            brdConfigurations.push({
+                id: brdId,
+                slaId: slaId,
+                offset: offset,
+                customMinutes: customMinutes,
+                offsetMinutes: offsetMinutes,
+                sla: sla
+            });
+
+            // Update UI
+            const confirmBtn = card.querySelector('.btn-primary');
+            confirmBtn.textContent = '✓ BRD Confirmed';
+            confirmBtn.style.background = '#28a745';
+            confirmBtn.disabled = true;
+
+            showToast(`BRD configured for ${sla.jobSchedule.name}`);
+        }
+
+        function completeConfiguration() {
+            if (brdConfigurations.length !== slaConfigurations.length) {
+                showToast('Please configure BRD for all SLAs', 'error');
+                return;
+            }
+
+            showToast('Configuration complete! Ready to save.');
+            
+            // Mark step 3 as completed
+            document.getElementById('step3').classList.remove('active');
+            document.getElementById('step3').classList.add('completed');
+            
+            updateWorkflowSteps();
+        }
+
+        function backToStep1() {
+            currentStep = 1;
+            updateWorkflowSteps();
+            
+            document.getElementById('section2').classList.remove('active');
+            document.getElementById('section2').classList.add('disabled');
+            document.getElementById('section1').classList.remove('disabled');
+            document.getElementById('section1').classList.add('active');
+            
+            document.getElementById('section1').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function backToStep2() {
+            currentStep = 2;
+            updateWorkflowSteps();
+            
+            document.getElementById('section3').classList.remove('active');
+            document.getElementById('section3').classList.add('disabled');
+            document.getElementById('section2').classList.remove('disabled');
+            document.getElementById('section2').classList.add('active');
+            
+            document.getElementById('section2').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateWorkflowSteps() {
+            // Reset all steps
+            ['step1', 'step2', 'step3'].forEach(stepId => {
+                const step = document.getElementById(stepId);
+                step.classList.remove('active', 'completed', 'disabled');
+            });
+
+            // Set current step as active
+            document.getElementById(`step${currentStep}`).classList.add('active');
+
+            // Mark previous steps as completed
+            for (let i = 1; i < currentStep; i++) {
+                document.getElementById(`step${i}`).classList.add('completed');
+            }
+
+            // Mark future steps as disabled
+            for (let i = currentStep + 1; i <= 3; i++) {
+                document.getElementById(`step${i}`).classList.add('disabled');
+            }
+
+            // Update badges
+            const sections = [
+                { id: 'section1', badge: document.querySelector('#section1 .section-badge') },
+                { id: 'section2', badge: document.querySelector('#section2 .section-badge') },
+                { id: 'section3', badge: document.querySelector('#section3 .section-badge') }
+            ];
+
+            sections.forEach((section, index) => {
+                const stepNum = index + 1;
+                if (stepNum < currentStep) {
+                    section.badge.className = 'section-badge badge-completed';
+                    section.badge.textContent = 'Completed';
+                } else if (stepNum === currentStep) {
+                    section.badge.className = 'section-badge badge-active';
+                    section.badge.textContent = 'Active';
+                } else {
+                    section.badge.className = 'section-badge badge-pending';
+                    section.badge.textContent = 'Pending';
+                }
+            });
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastMessage.textContent = message;
+            toast.style.background = type === 'error' ? '#dc3545' : '#28a745';
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function saveConfiguration() {
+            if (savedJobSchedules.length === 0) {
+                showToast('No configuration to save', 'error');
+                return;
+            }
+
+            console.log('Saving configuration:', {
+                jobSchedules: savedJobSchedules,
+                slaConfigurations: slaConfigurations,
+                brdConfigurations: brdConfigurations
+            });
+
+            showToast('All configurations saved successfully!');
+            document.querySelector('.action-left').textContent = 'Last saved: ' + new Date().toLocaleString();
+        }
+
+        function resetAll() {
+            if (confirm('Are you sure you want to reset all configurations? This will clear everything.')) {
+                savedJobSchedules = [];
+                slaConfigurations = [];
+                brdConfigurations = [];
+                generatedSchedulesData = [];
+                currentStep = 1;
+
+                document.getElementById('savedSchedulesList').innerHTML = '';
+                document.getElementById('slaConfigList').innerHTML = '';
+                document.getElementById('brdConfigList').innerHTML = '';
+                document.getElementById('generatedSchedulesContainer').style.display = 'none';
+                document.getElementById('proceedToSLABtn').style.display = 'none';
+                document.getElementById('proceedToBRDBtn').style.display = 'none';
+
+                backToStep1();
+                showToast('All configurations reset');
+            }
+        }
+    </script>
+</body>
+</html>
